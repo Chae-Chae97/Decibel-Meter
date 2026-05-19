@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>소음 측정기 (Decibel Meter)</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; background: #1a1a1a; color: #fff; padding: 20px; }
+        .container { max-width: 400px; margin: 0 auto; background: #2a2a2a; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        h1 { font-size: 24px; color: #4caf50; }
+        #db-display { font-size: 64px; font-weight: bold; margin: 20px 0; color: #ffeb3b; }
+        button { font-size: 18px; padding: 12px 24px; border: none; border-radius: 25px; cursor: pointer; font-weight: bold; margin: 5px; }
+        .start-btn { background: #4caf50; color: white; }
+        .record-btn { background: #2196f3; color: white; }
+        .record-list { margin-top: 30px; text-align: left; background: #333; padding: 15px; border-radius: 10px; max-height: 200px; overflow-y: auto; }
+        .record-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #444; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🔊 실시간 소음 측정기</h1>
+    <div id="db-display">00.0 dB</div>
+    
+    <button class="start-btn" id="startBtn" onclick="toggleMeasurement()">측정 시작</button>
+    <button class="record-btn" onclick="recordDecibel()">현재 데시벨 기록</button>
+
+    <div class="record-list">
+        <h3>📊 저장된 기록</h3>
+        <div id="records"></div>
+    </div>
+</div>
+
+<script>
+    let audioContext;
+    let analyser;
+    let microphone;
+    let javascriptNode;
+    let isMeasuring = false;
+    let currentDb = 0;
+
+    async function toggleMeasurement() {
+        const btn = document.getElementById('startBtn');
+        
+        if (isMeasuring) {
+            // 측정 중지
+            if (audioContext) audioContext.close();
+            btn.innerText = "측정 시작";
+            btn.style.background = "#4caf50";
+            document.getElementById('db-display').innerText = "00.0 dB";
+            isMeasuring = false;
+            return;
+        }
+
+        // 측정 시작 (마이크 권한 요청)
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioContext.createAnalyser();
+            microphone = audioContext.createMediaStreamSource(stream);
+            
+            analyser.fftSize = 512;
+            microphone.connect(analyser);
+
+            javascriptNode = audioContext.createScriptProcessor(256, 1, 1);
+            analyser.connect(javascriptNode);
+            javascriptNode.connect(audioContext.destination);
+
+            javascriptNode.onaudioprocess = function() {
+                const array = new Uint8Array(analyser.frequencyBinCount);
+                analyser.getByteFrequencyData(array);
+                
+                let values = 0;
+                const length = array.length;
+                for (let i = 0; i < length; i++) {
+                    values += array[i];
+                }
+                
+                let average = values / length;
+                // 단순 연산을 통한 데시벨 근사치 계산 (보정값 약 20 추가)
+                currentDb = average > 0 ? (Math.round(average * 10) / 10) + 20 : 0; 
+                
+                document.getElementById('db-display').innerText = currentDb.toFixed(1) + " dB";
+            };
+
+            btn.innerText = "측정 중지";
+            btn.style.background = "#f44336";
+            isMeasuring = true;
+
+        } catch (err) {
+            alert("마이크 권한이 필요합니다: " + err.message);
+        }
+    }
+
+    function recordDecibel() {
+        if (currentDb === 0) {
+            alert("먼저 측정을 시작해 주세요!");
+            return;
+        }
+        const recordsDiv = document.getElementById('records');
+        const now = new Date();
+        const timeString = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+        
+        const item = document.createElement('div');
+        item.className = 'record-item';
+        item.innerHTML = `<span>🕒 ${timeString}</span> <strong>🔊 ${currentDb.toFixed(1)} dB</strong>`;
+        
+        recordsDiv.insertBefore(item, recordsDiv.firstChild);
+    }
+</script>
+</body>
+</html>
