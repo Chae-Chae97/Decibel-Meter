@@ -3,56 +3,206 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>소음 측정기 (Decibel Meter)</title>
+    <title>Noise Monitoring System</title>
     <style>
-        body { font-family: sans-serif; text-align: center; background: #1a1a1a; color: #fff; padding: 20px; }
-        .container { max-width: 400px; margin: 0 auto; background: #2a2a2a; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        h1 { font-size: 24px; color: #4caf50; }
-        #db-display { font-size: 64px; font-weight: bold; margin: 20px 0; color: #ffeb3b; }
-        button { font-size: 18px; padding: 12px 24px; border: none; border-radius: 25px; cursor: pointer; font-weight: bold; margin: 5px; }
-        .start-btn { background: #4caf50; color: white; }
-        .record-btn { background: #2196f3; color: white; }
-        .record-list { margin-top: 30px; text-align: left; background: #333; padding: 15px; border-radius: 10px; max-height: 200px; overflow-y: auto; }
-        .record-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #444; font-size: 14px; }
+        body { font-family: sans-serif; background: #121212; color: #e0e0e0; padding: 20px; margin: 0; }
+        .container { max-width: 600px; margin: 0 auto; background: #1e1e1e; padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.6); }
+        
+        /* 상단 레이아웃 및 언어 버튼 */
+        .header-area { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px; }
+        h1 { color: #00e676; font-size: 22px; margin: 0; }
+        .lang-btn-group { display: flex; gap: 5px; }
+        .lang-btn { font-size: 11px; padding: 4px 8px; background: #333; color: #fff; border-radius: 4px; border: 1px solid #444; }
+        .lang-btn.active { background: #00e676; color: #000; font-weight: bold; border-color: #00e676; }
+        
+        .subtitle { color: #888; font-size: 13px; margin-bottom: 25px; }
+        .monitor-box { display: flex; justify-content: space-around; align-items: center; background: #292929; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        #db-display { font-size: 48px; font-weight: bold; color: #ffd600; text-align: center; }
+        #count-display { font-size: 14px; color: #aaa; text-align: center; }
+        .btn-group { display: flex; justify-content: center; gap: 10px; margin-bottom: 25px; }
+        button { font-size: 15px; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .start-btn { background: #00e676; color: #000; }
+        .stop-btn { background: #ff1744; color: #fff; display: none; }
+        .excel-btn { background: #2196f3; color: white; }
+        
+        /* 소음 지표 스타일 */
+        .indicator-box { background: #252525; border: 1px solid #333; border-radius: 8px; padding: 15px; margin-bottom: 25px; }
+        .indicator-title { font-size: 14px; color: #00e676; font-weight: bold; margin-bottom: 10px; text-align: center; }
+        .indicator-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 6px; font-size: 12px; }
+        .indicator-row { display: contents; }
+        .indicator-db { font-weight: bold; color: #ffd600; border-bottom: 1px solid #383838; padding: 4px 0; }
+        .indicator-desc { color: #ccc; border-bottom: 1px solid #383838; padding: 4px 0; }
+
+        /* 테이블 스타일 */
+        .table-wrapper { max-height: 250px; overflow-y: auto; border: 1px solid #333; border-radius: 6px; }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
+        th { background: #292929; color: #00e676; padding: 12px; position: sticky; top: 0; }
+        td { padding: 10px 12px; border-bottom: 1px solid #333; }
+        tr:nth-child(even) { background: #252525; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>🔊 실시간 소음 측정기</h1>
-    <div id="db-display">00.0 dB</div>
+    <div class="header-area">
+        <h1 id="txt-title">📊 8시간 연속 소음 모니터링</h1>
+        <div class="lang-btn-group">
+            <button class="lang-btn active" id="btn-ko" onclick="changeLanguage('ko')">KR</button>
+            <button class="lang-btn" id="btn-ja" onclick="changeLanguage('ja')">JP</button>
+        </div>
+    </div>
+    <div class="subtitle" id="txt-subtitle">종료 후 엑셀 파일(CSV)로 데이터를 추출할 수 있습니다.</div>
     
-    <button class="start-btn" id="startBtn" onclick="toggleMeasurement()">측정 시작</button>
-    <button class="record-btn" onclick="recordDecibel()">현재 데시벨 기록</button>
+    <div class="monitor-box">
+        <div>
+            <div style="font-size: 12px; color: #aaa;" id="txt-current-noise">현재 소음</div>
+            <div id="db-display">00.0 dB</div>
+        </div>
+        <div>
+            <div style="font-size: 12px; color: #aaa;" id="txt-data-count">수집된 데이터 개수</div>
+            <div id="count-display" style="font-size: 24px; font-weight: bold; color: #2196f3;">0개</div>
+        </div>
+    </div>
+    
+    <div class="btn-group">
+        <button class="start-btn" id="startBtn" onclick="startMonitoring()">측정 시작</button>
+        <button class="stop-btn" id="stopBtn" onclick="stopMonitoring()">측정 종료</button>
+        <button class="excel-btn" id="excelBtn" onclick="downloadCSV()">CSV 다운로드</button>
+    </div>
 
-    <div class="record-list">
-        <h3>📊 저장된 기록</h3>
-        <div id="records"></div>
+    <div class="indicator-box">
+        <div class="indicator-title" id="txt-ind-title">💡 소음 레벨 기준 (dB)</div>
+        <div class="indicator-grid" id="indicator-list">
+            </div>
+    </div>
+
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th id="th-num">번호</th>
+                    <th id="th-time">측정 시간</th>
+                    <th id="th-value">소음 수치 (dB)</th>
+                </tr>
+            </thead>
+            <tbody id="data-table-body"></tbody>
+        </table>
     </div>
 </div>
 
 <script>
-    let audioContext;
-    let analyser;
-    let microphone;
-    let javascriptNode;
+    // 2. 언어팩 데이터 사전 정의 (딕셔너리 구조)
+    const i18n = {
+        ko: {
+            title: "📊 8시간 연속 소음 모니터링",
+            subtitle: "종료 후 엑셀 파일(CSV)로 데이터를 추출할 수 있습니다.",
+            currentNoise: "현재 소음",
+            dataCount: "수집된 데이터 개수",
+            countUnit: "개",
+            btnStart: "측정 시작",
+            btnStop: "측정 종료",
+            btnExcel: "CSV 다운로드",
+            indTitle: "💡 소음 레벨 기준 (dB)",
+            thNum: "번호",
+            thTime: "측정 시간",
+            thValue: "소음 수치 (dB)",
+            alertMic: "마이크 권한 허용이 필요합니다: ",
+            alertStop: "측정이 종료되었습니다. CSV 파일을 다운로드하세요!",
+            alertNoData: "저장된 데이터가 없습니다.",
+            csvHeader: "번호,측정 시간,데시벨(dB)\n",
+            csvFileName: "소음측정기록",
+            indicators: [
+                { db: "20 ~ 30 dB", desc: "속삭이는 소리 · 심야의 교외 · 매우 조용함" },
+                { db: "40 ~ 50 dB", desc: "조용한 도서관 · 주택가 내부 · 보통 대화" },
+                { db: "60 ~ 70 dB", desc: "시끄러운 사무실 · 일상적인 거리 · 청소기 소리" },
+                { db: "80 ~ 90 dB", desc: "지하철 내부 · 개가 짖는 소리 · 시끄러운 공장" },
+                { db: "100+ dB", desc: "철도 다리 밑 · 자동차 경적 · 청각 손상 가능" }
+            ]
+        },
+        ja: {
+            title: "📊 8時間連続騒音モニタリング",
+            subtitle: "終了後、エクセルファイル(CSV)でデータを抽出できます。",
+            currentNoise: "現在の騒音",
+            dataCount: "収集されたデータ数",
+            countUnit: "個",
+            btnStart: "測定開始",
+            btnStop: "測定終了",
+            btnExcel: "CSVダウンロード",
+            indTitle: "💡 騒音レベルの目安 (dB)",
+            thNum: "番号",
+            thTime: "測定日時",
+            thValue: "騒音値 (dB)",
+            alertMic: "マイクの許可が必要です: ",
+            alertStop: "測定が終了しました。CSVファイルをダウンロードしてください！",
+            alertNoData: "保存されたデータがありません。",
+            csvHeader: "番号,測定日時,騒音値(dB)\n",
+            csvFileName: "騒音測定記録",
+            indicators: [
+                { db: "20 ~ 30 dB", desc: "ささやき声・深夜の郊外・きわめて静か" },
+                { db: "40 ~ 50 dB", desc: "静かな図書館・住宅地の室内・普通の会話" },
+                { db: "60 ~ 70 dB", desc: "騒がしい事務所・日常の街頭・掃除機" },
+                { db: "80 ~ 90 dB", desc: "地下鉄の車内・犬の鳴き声・騒々しい工場" },
+                { db: "100+ dB", desc: "電車のガード下・車のクラクション・聴覚機能に支障" }
+            ]
+        }
+    };
+
+    let currentLang = 'ko'; // 기본 언어 세팅
+    let audioContext, analyser, microphone, javascriptNode;
     let isMeasuring = false;
     let currentDb = 0;
+    let logInterval;
+    let wakeLock = null;
+    let dbDataRecords = [];
+    let recordCounter = 1;
 
-    async function toggleMeasurement() {
-        const btn = document.getElementById('startBtn');
+    // 3. 화면 UI 텍스트 업데이트 함수
+    function updateUI() {
+        const langData = i18n[currentLang];
         
-        if (isMeasuring) {
-            // 측정 중지
-            if (audioContext) audioContext.close();
-            btn.innerText = "측정 시작";
-            btn.style.background = "#4caf50";
-            document.getElementById('db-display').innerText = "00.0 dB";
-            isMeasuring = false;
-            return;
+        document.getElementById('txt-title').innerText = langData.title;
+        document.getElementById('txt-subtitle').innerText = langData.subtitle;
+        document.getElementById('txt-current-noise').innerText = langData.currentNoise;
+        document.getElementById('txt-data-count').innerText = langData.dataCount;
+        document.getElementById('count-display').innerText = (recordCounter - 1) + langData.countUnit;
+        
+        if (!isMeasuring) {
+            document.getElementById('startBtn').innerText = langData.btnStart;
+        } else {
+            document.getElementById('stopBtn').innerText = langData.btnStop;
         }
+        document.getElementById('excelBtn').innerText = langData.btnExcel;
+        document.getElementById('txt-ind-title').innerText = langData.indTitle;
+        
+        document.getElementById('th-num').innerText = langData.thNum;
+        document.getElementById('th-time').innerText = langData.thTime;
+        document.getElementById('th-value').innerText = langData.thValue;
 
-        // 측정 시작 (마이크 권한 요청)
+        // 지표 영역 동적 생성
+        const indGrid = document.getElementById('indicator-list');
+        indGrid.innerHTML = '';
+        langData.indicators.forEach(item => {
+            indGrid.innerHTML += `<div class="indicator-row">
+                <div class="indicator-db">${item.db}</div>
+                <div class="indicator-desc">${item.desc}</div>
+            </div>`;
+        });
+    }
+
+    // 4. 언어 토글 버튼 활성화 함수
+    function changeLanguage(lang) {
+        currentLang = lang;
+        document.getElementById('btn-ko').classList.remove('active');
+        document.getElementById('btn-ja').classList.remove('active');
+        document.getElementById(`btn-${lang}`).classList.add('active');
+        updateUI();
+    }
+
+    // 초기 구동 시 렌더링
+    updateUI();
+
+    /* --- 측정 핵심 로직부 --- */
+    async function startMonitoring() {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -61,7 +211,6 @@
             
             analyser.fftSize = 512;
             microphone.connect(analyser);
-
             javascriptNode = audioContext.createScriptProcessor(256, 1, 1);
             analyser.connect(javascriptNode);
             javascriptNode.connect(audioContext.destination);
@@ -69,43 +218,83 @@
             javascriptNode.onaudioprocess = function() {
                 const array = new Uint8Array(analyser.frequencyBinCount);
                 analyser.getByteFrequencyData(array);
-                
                 let values = 0;
-                const length = array.length;
-                for (let i = 0; i < length; i++) {
-                    values += array[i];
-                }
-                
-                let average = values / length;
-                // 단순 연산을 통한 데시벨 근사치 계산 (보정값 약 20 추가)
-                currentDb = average > 0 ? (Math.round(average * 10) / 10) + 20 : 0; 
-                
+                for (let i = 0; i < array.length; i++) { values += array[i]; }
+                let average = values / array.length;
+                currentDb = average > 0 ? (Math.round(average * 10) / 10) + 25 : 0;
                 document.getElementById('db-display').innerText = currentDb.toFixed(1) + " dB";
             };
 
-            btn.innerText = "측정 중지";
-            btn.style.background = "#f44336";
+            if ('wakeLock' in navigator) {
+                try { wakeLock = await navigator.wakeLock.request('screen'); } catch (err) { console.log(err); }
+            }
+
+            logInterval = setInterval(recordDataSeconds, 5000);
+
+            document.getElementById('startBtn').style.display = 'none';
+            document.getElementById('stopBtn').style.display = 'inline-block';
             isMeasuring = true;
+            updateUI();
 
         } catch (err) {
-            alert("마이크 권한이 필요합니다: " + err.message);
+            alert(i18n[currentLang].alertMic + err.message);
         }
     }
 
-    function recordDecibel() {
-        if (currentDb === 0) {
-            alert("먼저 측정을 시작해 주세요!");
+    function recordDataSeconds() {
+        if (currentDb === 0) return;
+
+        const now = new Date();
+        const timeString = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+        
+        const newDataNode = { id: recordCounter, time: timeString, db: currentDb.toFixed(1) };
+        dbDataRecords.push(newDataNode);
+
+        const tbody = document.getElementById('data-table-body');
+        const row = `<tr>
+            <td>${newDataNode.id}</td>
+            <td>${newDataNode.time}</td>
+            <td><strong>${newDataNode.db} dB</strong></td>
+        </tr>`;
+        tbody.insertAdjacentHTML('afterbegin', row);
+
+        document.getElementById('count-display').innerText = recordCounter + i18n[currentLang].countUnit;
+        recordCounter++;
+    }
+
+    function stopMonitoring() {
+        if (audioContext) audioContext.close();
+        if (logInterval) clearInterval(logInterval);
+        if (wakeLock) { wakeLock.release().then(() => wakeLock = null); }
+
+        document.getElementById('startBtn').style.display = 'inline-block';
+        document.getElementById('stopBtn').style.display = 'none';
+        isMeasuring = false;
+        updateUI();
+        alert(i18n[currentLang].alertStop);
+    }
+
+    function downloadCSV() {
+        if (dbDataRecords.length === 0) {
+            alert(i18n[currentLang].alertNoData);
             return;
         }
-        const recordsDiv = document.getElementById('records');
-        const now = new Date();
-        const timeString = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
-        
-        const item = document.createElement('div');
-        item.className = 'record-item';
-        item.innerHTML = `<span>🕒 ${timeString}</span> <strong>🔊 ${currentDb.toFixed(1)} dB</strong>`;
-        
-        recordsDiv.insertBefore(item, recordsDiv.firstChild);
+
+        let csvContent = "\uFEFF"; 
+        csvContent += i18n[currentLang].csvHeader;
+
+        dbDataRecords.forEach(row => {
+            csvContent += `${row.id},${row.time},${row.db}\n`;
+        });
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `${i18n[currentLang].csvFileName}_${new Date().toLocaleDateString()}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 </script>
 </body>
