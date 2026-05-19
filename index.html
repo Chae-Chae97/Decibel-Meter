@@ -26,8 +26,6 @@
         button { font-size: 14px; padding: 10px 18px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
         .start-btn { background: #00e676; color: #000; }
         .stop-btn { background: #ff1744; color: #fff; display: none; }
-        
-        /* 새로운 통합 리포트 버튼 스타일 (보라색 포인트) */
         .report-btn { background: #9c27b0; color: white; }
         .saver-btn { background: #607d8b; color: white; display: none; }
         
@@ -60,7 +58,7 @@
 
 <div class="container" id="report-content">
     <div class="header-area">
-        <h1 id="txt-title">📊 실시간 소음 모니터링</h1>
+        <h1 id="txt-title">📊 실시간 데시벨 모니터링</h1>
         <div class="lang-btn-group" id="lang-buttons">
             <button class="lang-btn active" id="btn-ko" onclick="changeLanguage('ko')">KR</button>
             <button class="lang-btn" id="btn-ja" onclick="changeLanguage('ja')">JP</button>
@@ -70,7 +68,7 @@
     
     <div class="monitor-box">
         <div class="monitor-item">
-            <div style="font-size: 12px; color: #aaa;" id="txt-current-noise">현재 소음 (70dB 초과 시 무시)</div>
+            <div style="font-size: 12px; color: #aaa;" id="txt-current-noise">현재 데시벨</div>
             <div id="db-display" class="monitor-val">00.0 dB</div>
         </div>
         <div class="monitor-item">
@@ -101,7 +99,7 @@
                 <tr>
                     <th id="th-num">번호</th>
                     <th id="th-time">측정 시간</th>
-                    <th id="th-value">소음 수치 (dB)</th>
+                    <th id="th-value">데시벨 수치 (dB)</th>
                 </tr>
             </thead>
             <tbody id="data-table-body"></tbody>
@@ -112,9 +110,9 @@
 <script>
     const i18n = {
         ko: {
-            title: "📊 실시간 소음 모니터링",
+            title: "📊 실시간 데시벨 모니터링",
             subtitle: "측정 종료 후, 그래프와 전체 데이터가 포함된 종합 보고서를 다운로드할 수 있습니다.",
-            currentNoise: "현재 소음 (70dB 초과 시 무시)",
+            currentNoise: "현재 데시벨",
             avgNoise: "기록된 평균치",
             btnStart: "측정 시작",
             btnStop: "측정 종료",
@@ -124,28 +122,20 @@
             indTitle: "💡 소음 레벨 기준 (dB)",
             thNum: "번호",
             thTime: "측정 시간",
-            thValue: "소음 수치 (dB)",
+            thValue: "데시벨 수치 (dB)",
             alertMic: "마이크 권한 허용이 필요합니다: ",
             alertStop: "측정이 종료되었습니다.",
             alertNoData: "저장된 데이터가 없습니다.",
-            reportFileName: "소음종합보고서",
-            chartLabel: "실시간 소음 파형 (70dB 이하만 기록)",
-            indicators: [
-                { db: "10", desc: "숨소리 · 매우 조용함" },
-                { db: "20", desc: "나뭇잎 스치는 소리 · 시계 초침" },
-                { db: "30", desc: "속삭이는 소리 · 심야의 교외" },
-                { db: "40", desc: "조용한 도서관 · 주택가 내부" },
-                { db: "50", desc: "조용한 사무실 · 보통의 대화" },
-                { db: "60", desc: "일상적인 거리 · 청소기 소리" },
-                { db: "70", desc: "시끄러운 사무실 · 전화벨" },
-                { db: "80", desc: "지하철 내부 · 시끄러운 공장 (기록 제외)" },
-                { db: "90+", desc: "철도 다리 밑 · 청각 손상 주의 (기록 제외)" }
-            ]
+            reportFileName: "데시벨종합보고서",
+            chartLabel: "실시간 데시벨 파형",
+            repTotalData: "총 측정 데이터",
+            repDataCount: "건",
+            repSubtitle: "전체 데이터 상세 기록"
         },
         ja: {
-            title: "📊 リアルタイム騒音監視",
+            title: "📊 リアルタイムデシベル監視",
             subtitle: "測定終了後、グラフと全データが含まれた統合レポートをダウンロードできます。",
-            currentNoise: "現在の騒音 (70dB超過は無視)",
+            currentNoise: "現在のデシベル",
             avgNoise: "記録された平均値",
             btnStart: "測定開始",
             btnStop: "測定終了",
@@ -155,29 +145,35 @@
             indTitle: "💡 騒音レベルの目安 (dB)",
             thNum: "番号",
             thTime: "測定日時",
-            thValue: "騒音値 (dB)",
+            thValue: "デシベル値 (dB)",
             alertMic: "マイクの許可が必要です: ",
             alertStop: "測定が終了しました。",
             alertNoData: "保存されたデータがありません。",
-            reportFileName: "騒音統合レポート",
-            chartLabel: "リアルタイム騒音波形 (70dB以下のみ記録)",
-            indicators: [
-                { db: "10", desc: "息づかい・きわめて静か" },
-                { db: "20", desc: "木の葉のふれあう音・時計の秒針" },
-                { db: "30", desc: "ささやき声・深夜の郊外" },
-                { db: "40", desc: "静かな図書館・住宅地の室内" },
-                { db: "50", desc: "静かな事務所・普通の会話" },
-                { db: "60", desc: "日常の街頭・掃除機" },
-                { db: "70", desc: "騒がしい事務所・電話のベル" },
-                { db: "80", desc: "地下鉄の車内・騒々しい工場 (記録外)" },
-                { db: "90+", desc: "電車のガード下・聴覚機能に支障 (記録外)" }
-            ]
+            reportFileName: "デシベル統合レポート",
+            chartLabel: "リアルタイムデシベル波形",
+            repTotalData: "総測定データ",
+            repDataCount: "個",
+            repSubtitle: "全データ詳細記録"
         }
     };
+
+    const indicatorsData = [
+        { db: "10", descKo: "숨소리 · 매우 조용함", descJa: "息づかい・きわめて静か" },
+        { db: "20", descKo: "나뭇잎 스치는 소리 · 시계 초침", descJa: "木の葉のふれあう音・時計の秒針" },
+        { db: "30", descKo: "속삭이는 소리 · 심야의 교외", descJa: "ささやき声・深夜の郊外" },
+        { db: "40", descKo: "조용한 도서관 · 주택가 내부", descJa: "静かな図書館・住宅地の室内" },
+        { db: "50", descKo: "조용한 사무실 · 보통의 대화", descJa: "静かな事務所・普通の会話" },
+        { db: "60", descKo: "일상적인 거리 · 청소기 소리", descJa: "日常の街頭・掃除機" },
+        { db: "70", descKo: "시끄러운 사무실 · 전화벨", descJa: "騒がしい事務所・電話のベル" },
+        { db: "80", descKo: "지하철 내부 · 시끄러운 공장", descJa: "地下鉄の車内・騒々しい工場" },
+        { db: "90+", descKo: "철도 다리 밑 · 청각 손상 주의", descJa: "電車のガード下・聴覚機能に支障" }
+    ];
 
     let currentLang = 'ko';
     let audioContext, analyser, microphone, javascriptNode;
     let isMeasuring = false;
+
+    let globalStream = null;
     
     let rawCurrentDb = 0; 
     let displayDb = 0;    
@@ -187,7 +183,6 @@
     let recordCounter = 1;
     let totalDbSum = 0;
     
-    // 전체 데이터를 저장할 백그라운드 배열
     let fullDataLog = []; 
     const MAX_DATA_POINTS = 6 * 60 * 60; 
 
@@ -215,7 +210,7 @@
                 scales: {
                     y: { 
                         min: 0, max: 120, 
-                        grid: { color: '#444' }, 
+                        grid: { display: true, color: '#444' }, 
                         ticks: { color: '#ccc', callback: function(value) { return value + ' dB'; } } 
                     },
                     x: { 
@@ -225,7 +220,8 @@
                             color: '#aaa',
                             autoSkip: true,
                             maxTicksLimit: 6, 
-                            maxRotation: 0
+                            maxRotation: 0,
+                            minRotation: 0
                         }
                     }
                 },
@@ -259,10 +255,11 @@
 
         const indGrid = document.getElementById('indicator-list');
         indGrid.innerHTML = '';
-        langData.indicators.forEach(item => {
+        indicatorsData.forEach(item => {
+            const desc = (currentLang === 'ko') ? item.descKo : item.descJa;
             indGrid.innerHTML += `<div class="indicator-row">
                 <div class="indicator-db">${item.db}</div>
-                <div class="indicator-desc">${item.desc}</div>
+                <div class="indicator-desc">${desc}</div>
             </div>`;
         });
     }
@@ -286,13 +283,13 @@
 
     async function startMonitoring() {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+            globalStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
             
             if (audioContext.state === 'suspended') { await audioContext.resume(); }
 
             analyser = audioContext.createAnalyser();
-            microphone = audioContext.createMediaStreamSource(stream);
+            microphone = audioContext.createMediaStreamSource(globalStream);
             
             analyser.fftSize = 512;
             microphone.connect(analyser);
@@ -307,7 +304,6 @@
                 for (let i = 0; i < array.length; i++) { values += array[i]; }
                 let average = values / array.length;
                 
-                // 원본 -5dB 하향 패치 유지
                 rawCurrentDb = average > 0 ? (Math.round(average * 10) / 10) + 20 : 0;
             };
 
@@ -346,7 +342,7 @@
     }
 
     function recordDataSeconds() {
-        if (displayDb === 0 || displayDb > 70) return; 
+        if (displayDb === 0) return; 
 
         const now = new Date();
         const timeStringFull = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
@@ -380,6 +376,10 @@
 
     function stopMonitoring() {
         if (audioContext) audioContext.close();
+        if (globalStream) {
+            globalStream.getTracks().forEach(track => track.stop());
+            globalStream = null;
+        }
         if (logInterval) clearInterval(logInterval);
         if (uiInterval) clearInterval(uiInterval);
         if (wakeLock) { wakeLock.release().then(() => wakeLock = null); }
@@ -393,27 +393,32 @@
         alert(i18n[currentLang].alertStop);
     }
 
-    // 🔥 궁극의 "단일 HTML 리포트" 다운로드 기능
     function downloadFullReport() {
         if (fullDataLog.length === 0) {
             alert(i18n[currentLang].alertNoData);
             return;
         }
 
-        // 1. 차트 캔버스를 고화질 이미지(Base64)로 캡처
         const chartImageURI = myChart.toBase64Image();
         const reportTitle = i18n[currentLang].reportFileName;
         const avgDbText = document.getElementById('avg-display').innerText;
 
-        // 2. 다운로드될 보고서의 HTML 및 디자인 뼈대 만들기 (밝은 테마 적용)
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const formattedDate = `${yyyy}${mm}${dd}`; 
+
+        const langData = i18n[currentLang];
+
         let htmlContent = `
         <!DOCTYPE html>
         <html lang="${currentLang}">
         <head>
             <meta charset="UTF-8">
-            <title>${reportTitle}</title>
+            <title>${reportTitle}_${formattedDate}</title>
             <style>
-                body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; color: #333; background: #f4f6f8; margin: 0; }
+                body { font-family: 'Segoe UI', sans-serif; padding: 20px; color: #333; background: #f4f6f8; margin: 0; }
                 .container { max-width: 800px; margin: 0 auto; background: #fff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
                 h1 { color: #00c853; text-align: center; border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 30px; }
                 .summary-box { background: #e8f5e9; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 30px; }
@@ -424,38 +429,36 @@
                 th { background: #00c853; color: white; padding: 12px; position: sticky; top: 0; }
                 td { padding: 10px; border-bottom: 1px solid #ddd; }
                 tr:nth-child(even) { background: #f9f9f9; }
-                tr:hover { background: #f1f8e9; }
                 .footer { margin-top: 50px; text-align: center; font-size: 12px; color: #999; }
             </style>
         </head>
         <body>
             <div class="container">
-                <h1>${reportTitle}</h1>
+                <h1>${reportTitle} (${yyyy}-${mm}-${dd})</h1>
                 
                 <div class="summary-box">
-                    <p style="margin-top:0; color:#555;">${i18n[currentLang].avgNoise}</p>
+                    <p style="margin-top:0; color:#555;">${langData.avgNoise}</p>
                     <h2>${avgDbText}</h2>
-                    <p style="margin-bottom:0; font-size:12px; color:#777;">총 측정 데이터: ${fullDataLog.length}건 (70dB 초과분 제외)</p>
+                    <p style="margin-bottom:0; font-size:12px; color:#777;">${langData.repTotalData}: ${fullDataLog.length}${langData.repDataCount}</p>
                 </div>
 
                 <div class="chart-box">
-                    <h3 style="color:#fff; margin-top:0;">${i18n[currentLang].chartLabel}</h3>
+                    <h3 style="color:#fff; margin-top:0;">${langData.chartLabel}</h3>
                     <img src="${chartImageURI}" alt="Noise Chart Image">
                 </div>
                 
-                <h3 style="color:#444; text-align:center;">📋 전체 데이터 상세 기록</h3>
+                <h3 style="color:#444; text-align:center;">📋 ${langData.repSubtitle}</h3>
                 <table>
                     <thead>
                         <tr>
-                            <th>${i18n[currentLang].thNum}</th>
-                            <th>${i18n[currentLang].thTime}</th>
-                            <th>${i18n[currentLang].thValue}</th>
+                            <th>${langData.thNum}</th>
+                            <th>${langData.thTime}</th>
+                            <th>${langData.thValue}</th>
                         </tr>
                     </thead>
                     <tbody>
         `;
 
-        // 3. 2만 개가 넘는 데이터를 반복문으로 표 안에 꽂아 넣기
         fullDataLog.forEach(row => {
             htmlContent += `<tr><td>${row.id}</td><td>${row.time}</td><td><strong>${row.db} dB</strong></td></tr>`;
         });
@@ -463,20 +466,17 @@
         htmlContent += `
                     </tbody>
                 </table>
-                <div class="footer">
-                    Generated by Real-time Noise Monitoring System
-                </div>
+                <div class="footer">Generated by Real-time Noise Monitoring System</div>
             </div>
         </body>
         </html>
         `;
 
-        // 4. 조립된 HTML 코드를 .html 파일로 묶어서 다운로드 시키기
         const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.setAttribute("href", url);
-        link.setAttribute("download", `${reportTitle}_${new Date().toLocaleDateString()}.html`);
+        link.setAttribute("download", `${reportTitle}_${formattedDate}.html`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
