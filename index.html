@@ -172,17 +172,14 @@
     let currentLang = 'ko';
     let audioContext, analyser, microphone, javascriptNode;
     let isMeasuring = false;
-
     let globalStream = null;
-    
     let rawCurrentDb = 0; 
     let displayDb = 0;    
-    
     let logInterval, uiInterval;
     let wakeLock = null;
     let recordCounter = 1;
     let totalDbSum = 0;
-    
+    let autoStopTimer;
     let fullDataLog = []; 
     const MAX_DATA_POINTS = 6 * 60 * 60; 
 
@@ -313,19 +310,8 @@
 
             uiInterval = setInterval(() => {
                 displayDb = rawCurrentDb;
-                const dbText = displayDb.toFixed(1) + " dB";
-                const dbEl = document.getElementById('db-display');
-                
-                dbEl.innerText = dbText;
-                document.getElementById('saver-db').innerText = dbText;
-
-                if (displayDb > 70) { 
-                    dbEl.style.color = '#ff1744'; 
-                    document.getElementById('saver-db').style.color = '#ff1744';
-                } else { 
-                    dbEl.style.color = '#ffd600'; 
-                    document.getElementById('saver-db').style.color = '#00e676';
-                }
+                document.getElementById('db-display').innerText = displayDb.toFixed(1) + " dB";
+                document.getElementById('saver-db').innerText = displayDb.toFixed(1) + " dB";
             }, 100); 
 
             logInterval = setInterval(recordDataSeconds, 1000); 
@@ -336,13 +322,21 @@
             isMeasuring = true;
             updateUI();
 
+            autoStopTimer = setTimeout(() => {
+                if (isMeasuring) {
+                    stopMonitoring();
+                    downloadFullReport();
+                    alert("6시간 측정 완료! 보고서가 자동으로 다운로드되었습니다.");
+                }
+            }, 6 * 60 * 60 * 1000);
+
         } catch (err) {
             alert(i18n[currentLang].alertMic + err.message);
         }
     }
 
     function recordDataSeconds() {
-        if (displayDb === 0) return; 
+        if (displayDb === 0 || displayDb > 70) return; // 70dB 초과 시 기록 차단 적용
 
         const now = new Date();
         const timeStringFull = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
@@ -375,6 +369,7 @@
     }
 
     function stopMonitoring() {
+        if (autoStopTimer) clearTimeout(autoStopTimer);
         if (audioContext) audioContext.close();
         if (globalStream) {
             globalStream.getTracks().forEach(track => track.stop());
