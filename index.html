@@ -8,7 +8,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         body { font-family: -apple-system, sans-serif; background: #121212; color: #e0e0e0; padding: 20px; margin: 0; }
-        /* PDF 변환 시 깔끔하게 나오도록 배경색과 여백을 조정하는 컨테이너 */
         .container { max-width: 600px; margin: 0 auto; background: #1e1e1e; padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.6); }
         
         .header-area { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px; }
@@ -19,17 +18,17 @@
         
         .subtitle { color: #888; font-size: 13px; margin-bottom: 25px; }
         
-        /* 데이터 수 표시를 빼고 2분할로 깔끔하게 변경 */
         .monitor-box { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #292929; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; }
         .monitor-item { border-right: 1px solid #383838; }
         .monitor-item:last-child { border-right: none; }
-        .monitor-val { font-size: 32px; font-weight: bold; color: #ffd600; margin-top: 5px; }
+        .monitor-val { font-size: 32px; font-weight: bold; color: #ffd600; margin-top: 5px; transition: color 0.3s; }
         
-        .btn-group { display: flex; justify-content: center; gap: 10px; margin-bottom: 25px; }
-        button { font-size: 15px; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .btn-group { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; margin-bottom: 25px; }
+        button { font-size: 14px; padding: 10px 18px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
         .start-btn { background: #00e676; color: #000; }
         .stop-btn { background: #ff1744; color: #fff; display: none; }
-        .pdf-btn { background: #ff9800; color: white; } /* PDF 버튼 색상 변경 */
+        .pdf-btn { background: #ff9800; color: white; }
+        .saver-btn { background: #607d8b; color: white; display: none; } /* 절전모드 버튼 */
         
         .chart-container { background: #252525; padding: 15px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #333; }
 
@@ -45,9 +44,20 @@
         th { background: #292929; color: #00e676; padding: 12px; position: sticky; top: 0; }
         td { padding: 10px 12px; border-bottom: 1px solid #333; }
         tr:nth-child(even) { background: #252525; }
+
+        /* 🔥 OLED 배터리 절약 모드 오버레이 (화면 검게 덮기) */
+        #battery-saver-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 9999; flex-direction: column; justify-content: center; align-items: center; color: #555;
+        }
     </style>
 </head>
 <body>
+
+<div id="battery-saver-overlay" onclick="toggleBatterySaver(false)">
+    <div style="font-size: 40px; color: #00e676; margin-bottom: 20px;" id="saver-db">00.0 dB</div>
+    <div id="txt-saver-hint">측정 중... (화면을 터치하면 해제됩니다)</div>
+</div>
 
 <div class="container" id="report-content">
     <div class="header-area">
@@ -73,6 +83,7 @@
     <div class="btn-group" id="control-buttons">
         <button class="start-btn" id="startBtn" onclick="startMonitoring()">측정 시작</button>
         <button class="stop-btn" id="stopBtn" onclick="stopMonitoring()">측정 종료</button>
+        <button class="saver-btn" id="saverBtn" onclick="toggleBatterySaver(true)">🌙 절전 모드</button>
         <button class="pdf-btn" id="pdfBtn" onclick="downloadPDF()">PDF 다운로드</button>
     </div>
 
@@ -105,18 +116,20 @@
             title: "📊 실시간 소음 모니터링",
             subtitle: "측정 종료 후 대시보드 전체를 PDF 보고서로 저장할 수 있습니다.",
             currentNoise: "현재 소음",
-            avgNoise: "전체 평균 (1초 단위 계산)",
+            avgNoise: "전체 평균",
             btnStart: "측정 시작",
             btnStop: "측정 종료",
+            btnSaver: "🌙 절전 모드",
             btnPDF: "PDF 다운로드",
+            saverHint: "측정 중... (화면을 터치하면 해제됩니다)",
             indTitle: "💡 소음 레벨 기준 (dB)",
             thNum: "번호",
             thTime: "측정 시간",
             thValue: "소음 수치 (dB)",
             alertMic: "마이크 권한 허용이 필요합니다: ",
-            alertStop: "측정이 종료되었습니다. 데이터 리포트를 PDF로 다운로드하세요!",
+            alertStop: "측정이 종료되었습니다.",
             pdfFileName: "소음모니터링_보고서",
-            chartLabel: "실시간 소음 파형 (최대 6시간)",
+            chartLabel: "실시간 소음 파형",
             indicators: [
                 { db: "10", desc: "숨소리 · 매우 조용함" },
                 { db: "20", desc: "나뭇잎 스치는 소리 · 시계 초침" },
@@ -133,18 +146,20 @@
             title: "📊 リアルタイム騒音監視",
             subtitle: "測定終了後、ダッシュボード全体をPDFレポートとして保存できます。",
             currentNoise: "現在の騒音",
-            avgNoise: "全体平均 (1秒単位計算)",
+            avgNoise: "全体平均",
             btnStart: "測定開始",
             btnStop: "測定終了",
+            btnSaver: "🌙 節電モード",
             btnPDF: "PDFダウンロード",
+            saverHint: "測定中... (画面をタッチすると解除されます)",
             indTitle: "💡 騒音レベルの目安 (dB)",
             thNum: "番号",
             thTime: "測定日時",
             thValue: "騒音値 (dB)",
             alertMic: "マイクの許可が必要です: ",
-            alertStop: "測定が終了しました。データレポートをPDFでダウンロードしてください！",
+            alertStop: "測定が終了しました。",
             pdfFileName: "騒音監視_レポート",
-            chartLabel: "リアルタイム騒音波形 (最大6時間)",
+            chartLabel: "リアルタイム騒音波形",
             indicators: [
                 { db: "10", desc: "息づかい・きわめて静か" },
                 { db: "20", desc: "木の葉のふれあう音・時計の秒針" },
@@ -162,14 +177,16 @@
     let currentLang = 'ko';
     let audioContext, analyser, microphone, javascriptNode;
     let isMeasuring = false;
-    let currentDb = 0;
+    
+    // CPU 최적화를 위해 변수 분리
+    let rawCurrentDb = 0; // 마이크에서 들어오는 원본 수치
+    let displayDb = 0;    // 화면에 보여줄 부드러운 수치
     
     let logInterval;
+    let uiInterval;
     let wakeLock = null;
     let recordCounter = 1;
     let totalDbSum = 0;
-
-    // 최대 6시간(21,600초) 데이터 기록 제한 변수
     const MAX_DATA_POINTS = 6 * 60 * 60; 
 
     let myChart;
@@ -179,23 +196,40 @@
         myChart = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: [], // 빈 배열로 시작해서 1초마다 동적으로 추가됨
+                labels: [], 
                 datasets: [{
                     label: i18n[currentLang].chartLabel,
                     data: [],
                     borderColor: '#00e676',
                     backgroundColor: 'rgba(0, 230, 118, 0.1)',
-                    borderWidth: 1.5, // 6시간 어치가 쌓이면 선이 너무 두꺼워지지 않게 얇게 조정
-                    pointRadius: 0, // 데이터가 촘촘하므로 점 표시 끄기
-                    tension: 0 // 곡선 연산 부하를 없애고 직선으로 연결 (성능 최적화)
+                    borderWidth: 1.5,
+                    pointRadius: 0,
+                    tension: 0
                 }]
             },
             options: {
                 responsive: true,
-                animation: false, // 장시간 측정 시 애니메이션이 켜져 있으면 메모리 터짐 (끄기)
+                animation: false,
                 scales: {
-                    y: { min: 0, max: 120, grid: { color: '#333' }, ticks: { color: '#aaa' } },
-                    x: { display: false } // 가로축 시간 레이블 숨김 (공간 확보)
+                    // 🔥 [그래프 개선 1] 세로축 숫자에 ' dB' 단위를 붙여서 출력
+                    y: { 
+                        min: 0, max: 120, 
+                        grid: { color: '#333' }, 
+                        ticks: { 
+                            color: '#aaa',
+                            callback: function(value) { return value + ' dB'; }
+                        } 
+                    },
+                    // 🔥 [그래프 개선 2] 가로축 시간(HH:mm) 표시 활성화 및 최적화
+                    x: { 
+                        display: true,
+                        grid: { display: false },
+                        ticks: {
+                            color: '#888',
+                            maxTicksLimit: 8, // 6시간 동안 시간이 다닥다닥 붙지 않게 최대 8개 시간만 띄엄띄엄 표시
+                            maxRotation: 0    // 글자 안 꺾이게 고정
+                        }
+                    }
                 },
                 plugins: { legend: { labels: { color: '#fff' } } }
             }
@@ -208,6 +242,8 @@
         document.getElementById('txt-subtitle').innerText = langData.subtitle;
         document.getElementById('txt-current-noise').innerText = langData.currentNoise;
         document.getElementById('txt-avg-noise').innerText = langData.avgNoise;
+        document.getElementById('saverBtn').innerText = langData.btnSaver;
+        document.getElementById('txt-saver-hint').innerText = langData.saverHint;
         
         if (!isMeasuring) { document.getElementById('startBtn').innerText = langData.btnStart; } 
         else { document.getElementById('stopBtn').innerText = langData.btnStop; }
@@ -241,6 +277,11 @@
         updateUI();
     }
 
+    // OLED 절전모드 토글 기능
+    function toggleBatterySaver(isOn) {
+        document.getElementById('battery-saver-overlay').style.display = isOn ? 'flex' : 'none';
+    }
+
     window.onload = function() {
         initChart();
         updateUI();
@@ -262,27 +303,39 @@
             analyser.connect(javascriptNode);
             javascriptNode.connect(audioContext.destination);
 
-            // 오디오 피드백은 디스플레이(숫자)만 변경 (그래프 갱신 안 함)
+            // 🔥 [성능 최적화 1] 마이크 연산부에서는 화면을 절대 건드리지 않고 숫자만 계산 (배터리 초절약)
             javascriptNode.onaudioprocess = function() {
                 const array = new Uint8Array(analyser.frequencyBinCount);
                 analyser.getByteFrequencyData(array);
                 let values = 0;
                 for (let i = 0; i < array.length; i++) { values += array[i]; }
                 let average = values / array.length;
-                currentDb = average > 0 ? (Math.round(average * 10) / 10) + 25 : 0;
-                
-                document.getElementById('db-display').innerText = currentDb.toFixed(1) + " dB";
+                rawCurrentDb = average > 0 ? (Math.round(average * 10) / 10) + 25 : 0;
             };
 
             if ('wakeLock' in navigator) {
                 try { wakeLock = await navigator.wakeLock.request('screen'); } catch (err) { console.log(err); }
             }
 
-            // 정확히 1초마다 1번씩만 그래프 및 표 업데이트 
+            // 🔥 [성능 최적화 2] 0.2초마다 숫자판 UI만 갱신 (부드러운 움직임 확보)
+            uiInterval = setInterval(() => {
+                displayDb = rawCurrentDb;
+                const dbText = displayDb.toFixed(1) + " dB";
+                const dbEl = document.getElementById('db-display');
+                
+                dbEl.innerText = dbText;
+                document.getElementById('saver-db').innerText = dbText;
+
+                if (displayDb >= 80) { dbEl.style.color = '#ff1744'; } 
+                else { dbEl.style.color = '#ffd600'; }
+            }, 200);
+
+            // 🔥 [성능 최적화 3] 그래프와 표는 정확히 1초에 1번만 무거운 갱신 작업 실행
             logInterval = setInterval(recordDataSeconds, 1000);
 
             document.getElementById('startBtn').style.display = 'none';
             document.getElementById('stopBtn').style.display = 'inline-block';
+            document.getElementById('saverBtn').style.display = 'inline-block';
             isMeasuring = true;
             updateUI();
 
@@ -292,31 +345,35 @@
     }
 
     function recordDataSeconds() {
-        if (currentDb === 0) return;
+        if (displayDb === 0) return;
 
         const now = new Date();
-        const timeString = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+        const timeStringFull = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+        // 그래프에 보여줄 짧은 시간 (예: 14:05:30)
+        const timeStringChart = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
         
-        // 1초 단위 평균 계산
-        totalDbSum += parseFloat(currentDb);
+        totalDbSum += parseFloat(displayDb);
         const currentAverageDb = totalDbSum / recordCounter;
         document.getElementById('avg-display').innerText = currentAverageDb.toFixed(1) + " dB";
 
-        // 1초 단위 표 업데이트
         const tbody = document.getElementById('data-table-body');
+        const rowColor = displayDb >= 80 ? "color: #ff1744;" : "";
         const row = `<tr>
             <td>${recordCounter}</td>
-            <td>${timeString}</td>
-            <td><strong>${currentDb.toFixed(1)} dB</strong></td>
+            <td>${timeStringFull}</td>
+            <td style="${rowColor}"><strong>${displayDb.toFixed(1)} dB</strong></td>
         </tr>`;
         tbody.insertAdjacentHTML('afterbegin', row);
 
-        // 1초 단위 그래프 데이터 누적 (최대 6시간 치 21600개)
+        // 🔥 [메모리 최적화] 표에는 최신 100개까지만 표시하고 오래된 태그 삭제 (폰 멈춤 방지)
+        if (tbody.children.length > 100) {
+            tbody.removeChild(tbody.lastChild);
+        }
+
         if (isMeasuring) {
-            myChart.data.labels.push('');
-            myChart.data.datasets[0].data.push(currentDb);
+            myChart.data.labels.push(timeStringChart); // X축에 시간 데이터 삽입
+            myChart.data.datasets[0].data.push(displayDb);
             
-            // 데이터가 6시간(21,600개)을 초과하면 가장 오래된(왼쪽) 데이터 삭제
             if (myChart.data.labels.length > MAX_DATA_POINTS) {
                 myChart.data.labels.shift();
                 myChart.data.datasets[0].data.shift();
@@ -330,18 +387,19 @@
     function stopMonitoring() {
         if (audioContext) audioContext.close();
         if (logInterval) clearInterval(logInterval);
+        if (uiInterval) clearInterval(uiInterval);
         if (wakeLock) { wakeLock.release().then(() => wakeLock = null); }
 
         document.getElementById('startBtn').style.display = 'inline-block';
         document.getElementById('stopBtn').style.display = 'none';
+        document.getElementById('saverBtn').style.display = 'none';
+        toggleBatterySaver(false);
         isMeasuring = false;
         updateUI();
         alert(i18n[currentLang].alertStop);
     }
 
-    // PDF 다운로드 기능
     function downloadPDF() {
-        // PDF 출력 시 지저분해 보일 수 있는 버튼 요소들 임시 숨김 처리
         document.getElementById('lang-buttons').style.display = 'none';
         document.getElementById('control-buttons').style.display = 'none';
 
@@ -356,7 +414,6 @@
             jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
 
-        // PDF 생성 후 숨겼던 버튼 다시 보이기
         html2pdf().set(opt).from(element).save().then(() => {
             document.getElementById('lang-buttons').style.display = 'flex';
             document.getElementById('control-buttons').style.display = 'flex';
